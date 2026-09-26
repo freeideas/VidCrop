@@ -24,7 +24,7 @@ Empty state: a big drop zone, "Drop a video here, or press Record."
 
 ## Edit model
 
-The entire edit is one small plain object, which makes undo, saving and testing simple:
+The entire edit is one small plain object, owned by the Rust core (`crates/core/src/edit.rs`), which makes undo, saving and testing simple:
 
 ```ts
 type Edit = {
@@ -36,7 +36,7 @@ type Edit = {
 
 - `kept` ranges are derived: the source duration minus `deleted`.
 - Undo/redo: a stack of `Edit` snapshots (they're tiny). Every committed drag or delete pushes one; mid-drag changes don't.
-- The edit is autosaved to the cache, keyed by source path and file size plus modified time, so reopening the same file offers to restore it.
+- Not built yet: the edit is autosaved to the cache, keyed by source path and file size plus modified time, so reopening the same file offers to restore it.
 
 ## Crop box
 

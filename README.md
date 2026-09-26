@@ -40,8 +40,25 @@ macOS first (it's what I'm sitting at), then Windows and Linux. Built with [Taur
 
 ## Status
 
-Just getting started. The plan lives in [specs/](specs/README.md).
+Works on macOS: crop, cut, preview, save, fast save, screen recording. Windows and Linux are next. The plan lives in [specs/](specs/README.md).
+
+## Robots welcome
+
+Everything the buttons do, a script can do too, through a local API or the `vidcrop` command:
+
+```sh
+vidcrop export talk.mp4 --crop 1280:720:320:180 --cut 0-4.5 --cut 61-75
+```
+
+See [specs/api.md](specs/api.md).
 
 ## Building it yourself
 
-Coming soon, once there is something to build. You'll need Rust, Node, and ffmpeg (`brew install ffmpeg rust node` on a Mac).
+You need Rust, Node and ffmpeg (`brew install rust node ffmpeg` on a Mac).
+
+```sh
+npm install
+npx tauri dev          # run the app while working on it
+npx tauri build        # make VidCrop.app
+cargo test             # tests, including a real crop-and-save
+```

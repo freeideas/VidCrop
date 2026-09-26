@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VidCrop</title>
+    <link rel="stylesheet" href="/src/style.css" />
+    <script type="module" src="/src/main.ts"></script>
+  </head>
+  <body>
+    <header id="bar">
+      <button id="open" title="Open a video (Cmd/Ctrl+O)">Open</button>
+      <button id="record" title="Record your screen">Record</button>
+      <div id="rec-banner" hidden><span class="dot"></span><span id="rec-time">0:00</span><button id="rec-stop">Stop</button></div>
+      <div class="spacer"></div>
+      <div id="edit-tools" hidden>
+        <button id="size" title="Output size. Click to type exact numbers.">0 × 0</button>
+        <select id="ratio" title="Crop shape">
+          <option value="free">Free</option>
+          <option value="1.7778">16:9</option>
+          <option value="0.5625">9:16</option>
+          <option value="1">1:1</option>
+          <option value="1.3333">4:3</option>
+        </select>
+        <button id="reset-crop" title="Use the whole picture">Full frame</button>
+        <button id="undo" title="Undo (Cmd/Ctrl+Z)">Undo</button>
+        <button id="redo" title="Redo (Shift+Cmd/Ctrl+Z)">Redo</button>
+        <div class="split">
+          <button id="save" class="primary" title="Save a new file next to the original (Cmd/Ctrl+S)">Save</button>
+          <button id="save-more" class="primary" title="More ways to save">▾</button>
+          <div id="save-menu" class="menu" hidden>
+            <button id="save-as">Save as…</button>
+            <button id="save-fast">Fast save (no quality loss, time cuts only)</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main id="stage">
+      <div id="empty">
+        <div class="big">Drop a video here</div>
+        <div>or <button id="open2">Open a file</button> <button id="record2">Record the screen</button></div>
+      </div>
+      <div id="viewer" hidden>
+        <video id="video" playsinline preload="auto"></video>
+        <div id="overlay">
+          <div class="dim" id="dim-t"></div><div class="dim" id="dim-b"></div><div class="dim" id="dim-l"></div><div class="dim" id="dim-r"></div>
+          <div id="crop">
+            <div class="h" data-h="nw"></div><div class="h" data-h="n"></div><div class="h" data-h="ne"></div>
+            <div class="h" data-h="w"></div><div class="h" data-h="e"></div>
+            <div class="h" data-h="sw"></div><div class="h" data-h="s"></div><div class="h" data-h="se"></div>
+          </div>
+        </div>
+        <div id="video-msg" hidden></div>
+      </div>
+    </main>
+
+    <footer id="timeline" hidden>
+      <div id="transport">
+        <button id="play" title="Play / pause (Space)">Play</button>
+        <span id="time">0:00.0 / 0:00.0</span>
+        <span id="result" title="Length of the saved video"></span>
+        <span id="sel-info"></span>
+        <button id="del-sel" hidden title="Delete the selected part (Delete)">Delete part</button>
+        <button id="restore-sel" hidden title="Bring back deleted video in the selection (R)">Restore</button>
+        <div class="spacer"></div>
+        <button id="preview-crop" title="Hide everything outside the crop (C)">Preview crop</button>
+      </div>
+      <div id="scroll">
+        <div id="track">
+          <div id="ruler"></div>
+          <div id="thumbs"></div>
+          <div id="cuts"></div>
+          <div id="sel" hidden></div>
+          <div id="playhead"></div>
+        </div>
+      </div>
+      <div id="hint">Drag across the strip to select, then press Delete. Drag the top edge to scrub. Double-click a deleted part to bring it back.</div>
+    </footer>
+
+    <div id="dialog" class="backdrop" hidden><div class="panel" id="dialog-body"></div></div>
+    <div id="progress" class="backdrop" hidden>
+      <div class="panel">
+        <div id="progress-label">Saving…</div>
+        <div class="bar"><i id="progress-fill"></i></div>
+        <button id="cancel">Cancel</button>
+      </div>
+    </div>
+    <div id="countdown" hidden></div>
+    <div id="toast" hidden></div>
+  </body>
+</html>

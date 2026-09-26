@@ -17,22 +17,31 @@ Electron was considered and rejected: consistent codecs everywhere, but about 15
 ## Processes
 
 ```
-+------------------------+        Tauri commands        +-------------------------+
-|  Web view (TypeScript) |  ------------------------->  |  Rust core              |
-|  - video player        |  <-------------------------  |  - probe / thumbnails   |
-|  - crop overlay        |     events (progress, done)  |  - export job           |
-|  - timeline + undo     |                              |  - recording job        |
-+------------------------+                              +-----------+-------------+
-                                                                    |
-                                                                    | spawns
-                                                                    v
-                                                           ffmpeg / ffprobe
++------------------------+                               +---------------------------+
+|  Web view (TypeScript) |  -- cmd (JSON command) ---->  |  Rust core (Core)         |
+|  - video player        |  <-- "state" / "ui" events -- |  - edit + undo history    |
+|  - crop overlay        |                               |  - probe / thumbnails     |
+|  - timeline            |                               |  - save jobs, recording   |
++------------------------+                               +-------------+-------------+
+                                                                       ^      |
+  HTTP API (127.0.0.1) / vidcrop CLI  -- same JSON commands ---------->+      | spawns
+                                                                              v
+                                                                       ffmpeg / ffprobe
 ```
 
-- The web view holds the whole edit state (see [editor.md](editor.md)). The Rust side is stateless except for running jobs.
-- Rust commands: `probe(path)`, `thumbnails(path, count)`, `export(edit, out_path, mode)`, `cancel(job_id)`, `list_capture_sources()`, `start_recording(opts)`, `stop_recording(job_id)`.
-- Long jobs emit Tauri events: `job://progress {job_id, fraction}`, `job://done {job_id, path}`, `job://error {job_id, message, log_tail}`.
-- Local files reach the `<video>` element through Tauri's asset protocol (`convertFileSrc`), scoped to files the user opened or recorded.
+- The Rust core owns the edit, the undo history and the jobs. The page keeps only player things (playhead, selection, zoom) and publishes them back with `ui_report` so API clients can see them. See [api.md](api.md) for every command.
+- The page has one Tauri command, `cmd`, taking the same JSON as the HTTP API's `POST /cmd`. After every change the core pushes the full state to the page as a `state` event.
+- Player commands from the API (`play`, `seek`, `select`...) reach the page as `ui` events.
+- Local files reach the `<video>` element through Tauri's asset protocol (`convertFileSrc`), scoped at runtime to files that were opened or recorded.
+
+## Code layout
+
+| Path                  | What                                                        |
+|-----------------------|-------------------------------------------------------------|
+| `crates/core`         | Edit model, ffmpeg calls, save, recording, session, HTTP API |
+| `crates/cli`          | `vidcrop` command: probe, export, serve, api                |
+| `src-tauri`           | The desktop app: window, tray icon, hosts the core and API  |
+| `src`, `index.html`   | The editor page                                             |
 
 ## Finding ffmpeg
 

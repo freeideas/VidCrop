@@ -1,6 +1,6 @@
 .DS_Store
-node_modules/
 dist/
-target/
-src-tauri/target/
+node_modules/
 src-tauri/binaries/
+src-tauri/target/
+target/

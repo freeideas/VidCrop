@@ -6,15 +6,19 @@ Technical plans for VidCrop. The user-facing pitch is in the [top-level README](
 - [editor.md](editor.md): the editing screen, the edit model, keyboard shortcuts, undo.
 - [export.md](export.md): how an edit becomes an ffmpeg command, encoder choices, progress, and the lossless "fast save".
 - [screen-recording.md](screen-recording.md): recording the screen and handing the result to the editor.
+- [api.md](api.md): driving everything without the window (HTTP API and command line), and how testing works.
 
 ## Guiding rules
 
 1. One job: crop in space and time. Every feature request gets measured against "does this make cropping easier?"
 2. No settings the user must understand before they can save. Sensible defaults, with an "Advanced" section tucked away.
 3. The original file is never modified.
-4. Everything runs locally. No network calls.
+4. Everything runs locally. No network calls (the API listens only on this computer).
+5. Everything is operable through the API. Tests drive the API; screenshots are only for checking looks.
 
 ## Milestones
+
+Done on macOS (September 2026): milestones 1 to 5, a basic fast save, the API, and an unsigned release build. Not yet: autosaving the edit, the preview copy for videos the window can't play, the keyframe warning for fast save, Windows and Linux builds, bundling ffmpeg.
 
 1. **Skeleton:** Tauri app opens a video (file dialog or drag and drop) and plays it.
 2. **Crop box:** draggable overlay, snaps to even pixel sizes, shows the resulting size.
