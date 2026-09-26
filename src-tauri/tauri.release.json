@@ -1,0 +1,6 @@
+{
+  "bundle": {
+    "externalBin": ["binaries/vidcrop-ffmpeg", "binaries/vidcrop-ffprobe"],
+    "resources": { "../notices/FFMPEG.md": "notices/FFMPEG.md" }
+  }
+}

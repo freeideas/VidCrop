@@ -6,8 +6,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::OnceLock;
 
-/// Finds a tool: `VIDCROP_<NAME>` env var, next to our own executable (bundled sidecar),
-/// the PATH, then common install folders (apps started from Finder don't get the shell PATH).
+/// Finds a tool: `VIDCROP_<NAME>` env var, the `vidcrop-<name>` copy bundled next to our
+/// executable, the PATH, then common install folders (apps started from Finder don't get the shell PATH).
 pub fn tool(name: &str) -> PathBuf {
     static CACHE: OnceLock<std::sync::Mutex<std::collections::HashMap<String, PathBuf>>> = OnceLock::new();
     let cache = CACHE.get_or_init(Default::default);
@@ -26,6 +26,11 @@ fn find_tool(name: &str) -> PathBuf {
     }
     let mut dirs: Vec<PathBuf> = Vec::new();
     if let Some(d) = std::env::current_exe().ok().and_then(|p| p.parent().map(Path::to_path_buf)) {
+        // A release bundles its own copy, prefixed so it never clashes with a system ffmpeg.
+        let bundled = d.join(format!("vidcrop-{exe}"));
+        if bundled.is_file() {
+            return bundled;
+        }
         dirs.push(d);
     }
     if let Some(path) = std::env::var_os("PATH") {
