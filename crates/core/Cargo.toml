@@ -1,0 +1,12 @@
+[package]
+name = "vidcrop-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+tiny_http = "0.12"
+getrandom = "0.2"
+base64 = "0.22"
