@@ -98,11 +98,12 @@ fn parse_avfoundation(text: &str) -> Vec<Source> {
 
 pub fn start(opts: &RecordOptions, dir: &Path) -> Result<Recording, String> {
     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
-    let stamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+    // Named like macOS names its own, since this becomes the saved file's name too.
+    let stamp = chrono::Local::now().format("Screen recording %Y-%m-%d at %H.%M.%S");
     let fps = opts.fps.unwrap_or(30).clamp(1, 60);
     #[cfg(target_os = "macos")]
     if native() {
-        let raw = dir.join(format!("recording-{stamp}.mov"));
+        let raw = dir.join(format!("{stamp}.mov"));
         let rec = crate::record_mac::start(opts, &raw, fps)?;
         return Ok(Recording { how: How::Native(rec), started: Instant::now() });
     }
@@ -115,7 +116,7 @@ pub fn start(opts: &RecordOptions, dir: &Path) -> Result<Recording, String> {
         None => sources.iter().find(|s| s.kind == "screen").map(|s| s.id.clone()).ok_or("no screen found to record")?,
     };
     let fps = fps.to_string();
-    let mkv = dir.join(format!("recording-{stamp}.mkv"));
+    let mkv = dir.join(format!("{stamp}.mkv"));
 
     let mut args: Vec<String> = vec!["-hide_banner".into(), "-y".into()];
     let s = |v: &[&str]| v.iter().map(|x| x.to_string()).collect::<Vec<_>>();

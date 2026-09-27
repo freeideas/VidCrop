@@ -29,9 +29,18 @@ pub struct Plan {
     pub kept_duration: f64,
 }
 
-/// `<folder>/<name>-cropped.<ext>`, adding `-2`, `-3`... if taken.
+/// `<folder>/<name>-cropped.<ext>`, adding `-2`, `-3`... if taken. A screen recording (still in
+/// the cache) goes to the Desktop under its own name instead: `Screen recording ... .mp4`.
 pub fn default_output(source: &str, mode: Mode) -> PathBuf {
     let src = Path::new(source);
+    if crate::paths::is_recording(source) {
+        let stem = src.file_stem().and_then(|s| s.to_str()).unwrap_or("Screen recording");
+        let dir = crate::paths::desktop_dir();
+        return (1..)
+            .map(|n| dir.join(if n == 1 { format!("{stem}.mp4") } else { format!("{stem} {n}.mp4") }))
+            .find(|p| !p.exists())
+            .unwrap();
+    }
     let stem = src.file_stem().and_then(|s| s.to_str()).unwrap_or("video");
     let ext = match mode {
         Mode::Exact => "mp4".to_string(),

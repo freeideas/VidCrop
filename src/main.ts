@@ -4,6 +4,7 @@
 
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { desktopDir, join } from "@tauri-apps/api/path";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
@@ -22,6 +23,7 @@ type State = {
   can_redo: boolean;
   jobs: Job[];
   recording: { seconds: number } | null;
+  from_recording?: boolean;
 };
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -531,14 +533,18 @@ async function openFile() {
 
 async function save(mode: "exact" | "fast" = "exact", ask = false) {
   if (!S.edit) return;
-  if (mode === "exact" && !S.edit.crop && !S.edit.deleted.length) {
+  if (mode === "exact" && !S.edit.crop && !S.edit.deleted.length && !S.from_recording) {
     toast("Nothing to save yet: drag the crop box or delete part of the timeline first.");
     return;
   }
   let output: string | null = null;
   if (ask) {
     const base = S.edit.source.replace(/\.[^./\\]+$/, "");
-    output = await saveDialog({ defaultPath: `${base}-cropped.mp4`, filters: [{ name: "MP4 video", extensions: ["mp4"] }] });
+    // Recordings live in a hidden cache folder until saved; suggest the Desktop for them.
+    const defaultPath = S.from_recording
+      ? await join(await desktopDir(), `${base.split(/[\\/]/).pop()}.mp4`)
+      : `${base}-cropped.mp4`;
+    output = await saveDialog({ defaultPath, filters: [{ name: "MP4 video", extensions: ["mp4"] }] });
     if (!output) return;
   }
   video.pause();

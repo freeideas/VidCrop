@@ -281,6 +281,8 @@ impl Core {
             s.next_job += 1;
             (s.edit.clone().ok_or("no video is open")?, s.info.clone().unwrap(), s.next_job)
         };
+        // Nothing to crop or cut (keeping a recording as is): a straight copy, no re-encoding.
+        let mode = if edit.crop.is_none() && edit.deleted.is_empty() { Mode::Fast } else { mode };
         let out = output.map(PathBuf::from).unwrap_or_else(|| export::default_output(&edit.source, mode));
         if Path::new(&edit.source) == out {
             return Err("won't overwrite the original video".into());
@@ -370,5 +372,6 @@ fn snapshot(s: &Session) -> Value {
         "recording": s.recording.as_ref().map(|r| json!({ "seconds": r.started.elapsed().as_secs_f64() })),
         "ui": s.ui,
         "debug_log": s.debug_log,
+        "from_recording": s.edit.as_ref().is_some_and(|e| crate::paths::is_recording(&e.source)),
     })
 }

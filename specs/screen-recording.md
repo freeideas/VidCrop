@@ -6,7 +6,7 @@ The point: record the whole screen without fussing, then use the normal editor t
 
 1. Press **Record**. A small panel asks: which screen, which microphone (or none), whether to also record the computer's own sound (where supported), and smoothness. Remembers last choice.
 2. 3-second countdown, then the VidCrop window hides itself. A menu bar / tray icon shows elapsed time and a Stop button. Global shortcut: Cmd/Ctrl+Shift+2 to stop.
-3. On Stop, the recording opens in the editor. It lives in the cache until saved; the "Save" button offers to keep the raw recording too.
+3. On Stop, the recording opens in the editor. It lives in the cache (named like macOS names its own: `Screen recording 2026-09-27 at 12.17.19`) until saved. Save puts it on the Desktop under that name, cropped and cut if you edited it, or copied as is (no re-encoding) if you didn't. "Save as" suggests the Desktop too.
 
 ## Phase 1: ffmpeg capture devices
 
