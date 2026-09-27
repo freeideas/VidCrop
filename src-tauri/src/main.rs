@@ -88,6 +88,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![cmd, api_info])
         .setup(|app| {
             let core = Core::new(Box::new(TauriHost { app: app.handle().clone(), recording: AtomicBool::new(false) }));
+            // Everything that happens goes to a temporary folder (deleted on quit) for debugging.
+            let _ = core.start_debug_log();
             app.manage(core.clone());
 
             let (url, file) = match vidcrop_core::api::start(core.clone(), 0, &vidcrop_core::api::default_api_file()) {
@@ -123,6 +125,13 @@ fn main() {
             }
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running VidCrop");
+        .build(tauri::generate_context!())
+        .expect("error while starting VidCrop")
+        .run(|app, event| {
+            if let tauri::RunEvent::Exit = event {
+                if let Some(core) = app.try_state::<Arc<Core>>() {
+                    core.stop_debug_log();
+                }
+            }
+        });
 }

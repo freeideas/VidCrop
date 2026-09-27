@@ -51,6 +51,41 @@ async function run(command: object): Promise<any> {
   }
 }
 
+// ---------- debug log ----------
+// Every click, key, player event and error goes to the core's debug log, a temporary folder
+// deleted on quit (its path is `debug_log` in api.json). See crates/core/src/debuglog.rs.
+
+const logQueue: object[] = [];
+function logEvent(e: object) {
+  logQueue.push({ ms: Math.round(performance.now()), ...e });
+  if (logQueue.length === 1)
+    setTimeout(() => invoke("cmd", { command: { cmd: "log", events: logQueue.splice(0) } }).catch(() => {}), 250);
+}
+
+/** A short readable name for an element: `button#play "Play"`. */
+function describe(t: EventTarget | null): string {
+  if (!(t instanceof Element)) return String(t);
+  const id = t.id ? `#${t.id}` : "";
+  const cls = typeof t.className === "string" && t.className ? `.${t.className.trim().split(/\s+/).join(".")}` : "";
+  const text = (t.textContent ?? "").trim().slice(0, 40);
+  return `${t.tagName.toLowerCase()}${id}${cls}${text ? ` "${text}"` : ""}`;
+}
+
+for (const type of ["pointerdown", "pointerup", "click", "dblclick", "contextmenu"])
+  document.addEventListener(type, (e) => {
+    const p = e as PointerEvent;
+    logEvent({ event: type, target: describe(e.target), x: Math.round(p.clientX), y: Math.round(p.clientY), button: p.button });
+  }, true);
+document.addEventListener("keydown", (e) => {
+  logEvent({ event: "keydown", key: e.key, mods: [e.metaKey && "meta", e.ctrlKey && "ctrl", e.altKey && "alt", e.shiftKey && "shift"].filter(Boolean), target: describe(e.target), repeat: e.repeat });
+}, true);
+for (const type of ["loadedmetadata", "play", "playing", "pause", "waiting", "stalled", "seeking", "seeked", "ended", "error", "emptied"])
+  video.addEventListener(type, () => {
+    logEvent({ event: `video.${type}`, time: +video.currentTime.toFixed(3), paused: video.paused, ready: video.readyState, error: video.error?.message });
+  });
+window.addEventListener("error", (e) => logEvent({ event: "js_error", message: e.message, where: `${e.filename}:${e.lineno}` }));
+window.addEventListener("unhandledrejection", (e) => logEvent({ event: "js_rejection", reason: String(e.reason) }));
+
 function applyState(st: State) {
   S = st;
   render();
@@ -243,16 +278,22 @@ function renderJobs() {
 // ---------- player ----------
 
 function togglePlay() {
+  logEvent({ event: "togglePlay", file: !!S.file, paused: video.paused, time: +video.currentTime.toFixed(3) });
   if (!S.file) return;
   if (video.paused) {
     const last = S.kept[S.kept.length - 1];
     if (last && video.currentTime >= last.end - 0.05) video.currentTime = S.kept[0].start;
-    video.play();
+    video.play().catch((e) => logEvent({ event: "play_failed", error: String(e) }));
   } else video.pause();
 }
 
 function seek(t: number) {
   video.currentTime = clamp(t, 0, duration());
+}
+
+/** Changes text only when it differs. Replacing a button's text between mouse down and up makes WebKit drop the click. */
+function setText(el: HTMLElement, text: string) {
+  if (el.textContent !== text) el.textContent = text;
 }
 
 /** Every frame: move the playhead, and skip over deleted parts while playing. */
@@ -269,8 +310,8 @@ function tick() {
       }
     }
     $("playhead").style.left = pct(video.currentTime);
-    $("time").textContent = `${fmt(video.currentTime)} / ${fmt(duration())}`;
-    $("play").textContent = video.paused ? "Play" : "Pause";
+    setText($("time"), `${fmt(video.currentTime)} / ${fmt(duration())}`);
+    setText($("play"), video.paused ? "Play" : "Pause");
     report();
   }
   requestAnimationFrame(tick);

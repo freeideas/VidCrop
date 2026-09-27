@@ -13,7 +13,7 @@ Everything VidCrop can do can be done without looking at it. The window and the 
 ## Connecting
 
 - Listens on `127.0.0.1` only, on a random free port (`VIDCROP_API_PORT` fixes it).
-- On start it writes `api.json` with `url`, `token` and `pid` to the data folder: `~/Library/Application Support/VidCrop/` on macOS, `%APPDATA%\VidCrop\` on Windows, `~/.local/share/vidcrop/` on Linux. `VIDCROP_API_FILE` overrides the path. The file is readable only by the user.
+- On start it writes `api.json` with `url`, `token`, `pid` and `debug_log` (see below) to the data folder: `~/Library/Application Support/VidCrop/` on macOS, `%APPDATA%\VidCrop\` on Windows, `~/.local/share/vidcrop/` on Linux. `VIDCROP_API_FILE` overrides the path. The file is readable only by the user.
 - Every request needs `Authorization: Bearer <token>`. `VIDCROP_API_TOKEN` sets a fixed token for tests.
 - Requests carrying an `Origin` header are refused, so a web page in a browser can't drive VidCrop even if it guesses the port.
 
@@ -72,8 +72,20 @@ Every edit command is one undo step, the same as the matching mouse action.
   "jobs": [{ "id", "kind", "status": "running|done|failed|cancelled", "progress", "output", "error" }],
   "recording": { "seconds" } | null,
   "ui": { "playhead", "playing", "selection", "preview_crop", "zoom", "crop_shape" }  // from the window
+  "debug_log": "/tmp/.../vidcrop-debug-20260927-110627-40290" | null
 }
 ```
+
+## Debug log
+
+While the desktop app runs, everything that happens is appended to `events.jsonl` in a temporary folder named for when the app started (`vidcrop-debug-YYYYMMDD-HHMMSS-<pid>`, UTC, in the OS temp folder). Its path is `debug_log` in `api.json` and in `state`. The folder is deleted when the app quits, so copy it to keep it; folders left by a crash are cleared after a day.
+
+One JSON object per line, `t` = seconds since start:
+
+- `"src":"cmd"`: every command from the page, the API or the tray, with how long it took (`ms`) and its `result` or `error` (long values shortened; `state` answers left out).
+- `"src":"ui"`: what the page reports: `pointerdown`, `pointerup`, `click`, `keydown` (with the element hit), player events (`video.play`, `video.pause`, `video.waiting`, `video.error`...), `togglePlay`, `play_failed`, and JavaScript errors. The page sends these with the `log` command (`events: [...]`), which isn't itself logged.
+
+Example: a `pointerdown` and `pointerup` on `button#play` with no `click` after them means the press never reached the button.
 
 ## Tests
 

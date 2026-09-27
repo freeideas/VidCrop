@@ -2,6 +2,7 @@
 //! `Command`s to `Core::exec`, and both see the same `state()`.
 
 use crate::edit::{Edit, Range, Rect};
+use crate::debuglog::{self, DebugLog};
 use crate::export::{self, Mode};
 use crate::ffmpeg::{self, MediaInfo};
 use crate::record::{self, RecordOptions, Recording};
@@ -81,6 +82,8 @@ struct Session {
     next_job: u64,
     recording: Option<Recording>,
     ui: Value,
+    /// The debug log folder, while there is one.
+    debug_log: Option<String>,
 }
 
 /// How the core talks back to whoever hosts it (the Tauri app, or nothing when headless).
@@ -100,13 +103,41 @@ pub struct Core {
     s: Mutex<Session>,
     host: Box<dyn Host>,
     work_dir: PathBuf,
+    log: Mutex<Option<DebugLog>>,
 }
 
 impl Core {
     pub fn new(host: Box<dyn Host>) -> Arc<Core> {
         let work_dir = crate::paths::cache_dir();
         let _ = std::fs::create_dir_all(&work_dir);
-        Arc::new(Core { s: Mutex::new(Session { ui: json!({}), ..Default::default() }), host, work_dir })
+        Arc::new(Core { s: Mutex::new(Session { ui: json!({}), ..Default::default() }), host, work_dir, log: Mutex::new(None) })
+    }
+
+    /// Starts logging every command and UI event to a temporary folder (see `debuglog`); returns it.
+    pub fn start_debug_log(&self) -> Result<PathBuf, String> {
+        let log = DebugLog::create()?;
+        let dir = log.dir().to_path_buf();
+        self.s.lock().unwrap().debug_log = Some(dir.to_string_lossy().into_owned());
+        *self.log.lock().unwrap() = Some(log);
+        Ok(dir)
+    }
+
+    /// Deletes the log folder. Call when the app quits.
+    pub fn stop_debug_log(&self) {
+        self.s.lock().unwrap().debug_log = None;
+        if let Some(log) = self.log.lock().unwrap().take() {
+            log.remove();
+        }
+    }
+
+    pub fn debug_log_dir(&self) -> Option<PathBuf> {
+        self.log.lock().unwrap().as_ref().map(|l| l.dir().to_path_buf())
+    }
+
+    fn log(&self, src: &str, fields: Value) {
+        if let Some(log) = self.log.lock().unwrap().as_ref() {
+            log.write(src, fields);
+        }
     }
 
     pub fn state(&self) -> Value {
@@ -119,8 +150,23 @@ impl Core {
     }
 
     pub fn exec_json(self: &Arc<Self>, v: Value) -> Result<Value, String> {
-        let cmd: Command = serde_json::from_value(v).map_err(|e| format!("bad command: {e}"))?;
-        self.exec(cmd)
+        if v["cmd"] == "log" {
+            // Events the page reports go straight into the debug log, not logged as a command.
+            for e in v["events"].as_array().into_iter().flatten() {
+                self.log("ui", debuglog::trim(e));
+            }
+            return Ok(json!({ "ok": true }));
+        }
+        let t0 = Instant::now();
+        let result = serde_json::from_value::<Command>(v.clone()).map_err(|e| format!("bad command: {e}")).and_then(|cmd| self.exec(cmd));
+        let ms = t0.elapsed().as_millis() as u64;
+        match &result {
+            // `state` answers are big and frequent; the log only needs to know it was asked.
+            Ok(_) if v["cmd"] == "state" => self.log("cmd", json!({ "cmd": v, "ms": ms })),
+            Ok(r) => self.log("cmd", json!({ "cmd": debuglog::trim(&v), "ms": ms, "result": debuglog::trim(r) })),
+            Err(e) => self.log("cmd", json!({ "cmd": debuglog::trim(&v), "ms": ms, "error": e })),
+        }
+        result
     }
 
     pub fn exec(self: &Arc<Self>, cmd: Command) -> Result<Value, String> {
@@ -323,5 +369,6 @@ fn snapshot(s: &Session) -> Value {
         "jobs": s.jobs.values().collect::<Vec<_>>(),
         "recording": s.recording.as_ref().map(|r| json!({ "seconds": r.started.elapsed().as_secs_f64() })),
         "ui": s.ui,
+        "debug_log": s.debug_log,
     })
 }

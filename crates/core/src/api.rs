@@ -29,14 +29,15 @@ fn new_token() -> String {
 }
 
 /// Starts the API on a background thread. `port` 0 picks a free one
-/// (`VIDCROP_API_PORT` overrides). Writes `{url, token, pid}` to `api_file`.
+/// (`VIDCROP_API_PORT` overrides). Writes `{url, token, pid, debug_log}` to `api_file`.
 pub fn start(core: Arc<Core>, port: u16, api_file: &Path) -> Result<ApiInfo, String> {
     let port = std::env::var("VIDCROP_API_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(port);
     let server = Server::http(("127.0.0.1", port)).map_err(|e| format!("couldn't start the API: {e}"))?;
     let port = server.server_addr().to_ip().map(|a| a.port()).unwrap_or(port);
     let url = format!("http://127.0.0.1:{port}");
     let token = new_token();
-    write_api_file(api_file, &json!({ "url": url, "token": token, "pid": std::process::id() }))?;
+    let debug_log = core.debug_log_dir();
+    write_api_file(api_file, &json!({ "url": url, "token": token, "pid": std::process::id(), "debug_log": debug_log }))?;
 
     let server = Arc::new(server);
     let tok = token.clone();

@@ -3,6 +3,7 @@
 //! tested without a window.
 
 pub mod api;
+pub mod debuglog;
 pub mod edit;
 pub mod export;
 pub mod ffmpeg;
