@@ -33,7 +33,7 @@ WINDOWS = os.environ.get("VIDCROP_WINDOWS_HOST", "emeraldslate-windows")
 WEB = os.environ.get("VIDCROP_WEB_HOST", "ace@62.84.178.253")
 WEB_DIR = "/var/www/textautomationlib/VidCrop"
 WEB_URL = "https://62-84-178-253.sslip.io/VidCrop"
-WIN_DIR = r"C:\VidCrop-build"
+WIN_DIR = r"D:\VidCrop-build"  # D: is a build drive; the guest's C: is nearly full
 SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ServerAliveInterval=30"]
 
 
@@ -117,7 +117,7 @@ def build_windows(out):
                  " && schtasks /run /tn VidCropBuild")
     wait_for_log(WINDOWS, f'powershell -NoProfile -Command "Get-Content {WIN_DIR}\\build.log -Tail 40"', "windows")
     v = version()
-    src = f"{WINDOWS}:C:/VidCrop-build/target/release/bundle/nsis/VidCrop_{v}_x64-setup.exe"
+    src = f"{WINDOWS}:{WIN_DIR.replace(chr(92), '/')}/target/release/bundle/nsis/VidCrop_{v}_x64-setup.exe"
     run(["scp", "-o", "BatchMode=yes", src, str(out / f"VidCrop-{v}-windows-x64-setup.exe")])
 
 
