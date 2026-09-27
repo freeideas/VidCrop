@@ -90,8 +90,12 @@ def build_mac(out):
 
 
 def _start_linux():
-    send_source(LINUX, "rm -rf ~/build/VidCrop && mkdir -p ~/build/VidCrop && tar -x -C ~/build/VidCrop")
     docker = "$(docker info >/dev/null 2>&1 && echo docker || echo 'sudo -n docker')"
+    # The container runs as root and hands the files back only when a build finishes, so an
+    # interrupted build leaves root-owned files that only a container can delete.
+    ssh(LINUX, f"rm -rf ~/build/VidCrop 2>/dev/null || {{ D={docker}; "
+               "$D run --rm -v ~/build:/b ubuntu:22.04 rm -rf /b/VidCrop; }")
+    send_source(LINUX, "mkdir -p ~/build/VidCrop && tar -x -C ~/build/VidCrop")
     ssh(LINUX, f"D={docker}; cd ~/build/VidCrop && $D build -q -t vidcrop-linux-build tools/linux-build")
     inner = (
         "(npm ci --no-audit --no-fund && uv run -q tools/fetch_ffmpeg.py && "
