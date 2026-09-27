@@ -162,7 +162,9 @@ impl Core {
                 return Ok(json!({ "ok": true }));
             }
             Command::Wait { job, timeout } => return self.wait(job, timeout.unwrap_or(600.0)),
-            Command::Sources => return Ok(json!({ "sources": record::list_sources()? })),
+            Command::Sources => {
+                return Ok(json!({ "sources": record::list_sources()?, "system_audio": record::can_record_system_audio() }))
+            }
             Command::RecordStart { options } => {
                 if self.s.lock().unwrap().recording.is_some() {
                     return Err("already recording".into());

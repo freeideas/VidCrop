@@ -505,28 +505,30 @@ async function save(mode: "exact" | "fast" = "exact", ask = false) {
 }
 
 async function recordDialog() {
-  const { sources } = await run({ cmd: "sources" });
+  const { sources, system_audio } = await run({ cmd: "sources" });
   const screens = sources.filter((s: any) => s.kind === "screen");
   const mics = sources.filter((s: any) => s.kind === "mic");
   const opt = (value: string, label: string) => Object.assign(document.createElement("option"), { value, textContent: label });
   const screenSel = document.createElement("select");
   screenSel.append(...screens.map((s: any) => opt(s.id, s.name)));
   const micSel = document.createElement("select");
-  micSel.append(opt("", "No sound"), ...mics.map((s: any) => opt(s.id, s.name)));
+  micSel.append(opt("", "No microphone"), ...mics.map((s: any) => opt(s.id, s.name)));
+  const sysSel = document.createElement("select");
+  sysSel.append(opt("", "Don't record it"), opt("1", "Record it too"));
   const fpsSel = document.createElement("select");
   fpsSel.append(opt("30", "30 frames/sec"), opt("60", "60 frames/sec"));
   let last: any = {};
   try {
     last = JSON.parse(localStorage.getItem("record") ?? "{}");
   } catch {}
-  for (const [sel, v] of [[screenSel, last.screen], [micSel, last.mic], [fpsSel, last.fps]] as const)
+  for (const [sel, v] of [[screenSel, last.screen], [micSel, last.mic], [sysSel, last.system], [fpsSel, last.fps]] as const)
     if (v !== undefined && [...sel.options].some((o) => o.value === v)) sel.value = v;
   const note = Object.assign(document.createElement("div"), {
     textContent: "The window hides while recording. Stop from the REC item in the menu bar (or tray).",
   });
   note.style.color = "var(--muted)";
   const start = async () => {
-    const choice = { screen: screenSel.value, mic: micSel.value, fps: fpsSel.value };
+    const choice = { screen: screenSel.value, mic: micSel.value, system: sysSel.value, fps: fpsSel.value };
     try {
       localStorage.setItem("record", JSON.stringify(choice));
     } catch {}
@@ -538,17 +540,17 @@ async function recordDialog() {
     }
     cd.hidden = true;
     try {
-      await invoke("cmd", { command: { cmd: "record_start", screen: choice.screen || null, mic: choice.mic || null, fps: Number(choice.fps) } });
+      await invoke("cmd", { command: { cmd: "record_start", screen: choice.screen || null, mic: choice.mic || null, system_audio: system_audio && !!choice.system, fps: Number(choice.fps) } });
     } catch (e) {
       const pre = Object.assign(document.createElement("pre"), { textContent: String(e) });
       dialog("Recording didn't start", [pre], [{ label: "OK", primary: true }]);
     }
   };
   if (!screens.length) {
-    dialog("No screen found", [Object.assign(document.createElement("div"), { textContent: "ffmpeg didn't list any screens to record." })], [{ label: "OK" }]);
+    dialog("No screen found", [Object.assign(document.createElement("div"), { textContent: "No screens were found to record." })], [{ label: "OK" }]);
     return;
   }
-  dialog("Record the screen", [field("Screen", screenSel), field("Sound", micSel), field("Smoothness", fpsSel), note], [
+  dialog("Record the screen", [field("Screen", screenSel), field("Microphone", micSel), ...(system_audio ? [field("Computer's sound", sysSel)] : []), field("Smoothness", fpsSel), note], [
     { label: "Cancel" },
     { label: "Start recording", primary: true, fn: () => void start() },
   ]);

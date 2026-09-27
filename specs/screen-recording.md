@@ -4,13 +4,13 @@ The point: record the whole screen without fussing, then use the normal editor t
 
 ## Flow
 
-1. Press **Record**. A small panel asks: which screen (if more than one), microphone on/off. Remembers last choice.
+1. Press **Record**. A small panel asks: which screen, which microphone (or none), whether to also record the computer's own sound (where supported), and smoothness. Remembers last choice.
 2. 3-second countdown, then the VidCrop window hides itself. A menu bar / tray icon shows elapsed time and a Stop button. Global shortcut: Cmd/Ctrl+Shift+2 to stop.
 3. On Stop, the recording opens in the editor. It lives in the cache until saved; the "Save" button offers to keep the raw recording too.
 
 ## Phase 1: ffmpeg capture devices
 
-Quick to build, one code path shape for all platforms.
+Used on Windows, Linux, and macOS 13-14. On macOS 15+ phase 2 below replaces it.
 
 | OS            | Input                                                  | Notes                                      |
 |---------------|--------------------------------------------------------|--------------------------------------------|
@@ -24,17 +24,19 @@ Quick to build, one code path shape for all platforms.
 - Frame rate: 30 fps default, 60 option.
 - Stop by writing `q` to ffmpeg's stdin so the file is closed cleanly.
 
-**macOS permission:** the first recording triggers the Screen Recording permission prompt for VidCrop, and macOS requires restarting the app after granting it. Detect a black or failed capture, then explain and offer a button that opens System Settings at the right page (`x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture`). Microphone permission works the same way.
+**macOS permission (phase 1):** without Screen Recording permission, avfoundation doesn't fail or prompt, it just hangs writing nothing. So `record_start` waits up to 5 seconds for the file to get data, and otherwise stops ffmpeg and explains how to allow VidCrop in System Settings > Privacy & Security.
 
 **Phase 1 limit:** no system audio (the sound your computer plays). avfoundation can't capture it.
 
 ## Phase 2: native capture
 
-- **macOS:** ScreenCaptureKit (macOS 12.3+, system audio from 13) through the `screencapturekit` Rust crate. Gives system audio, per-window capture, and hides VidCrop's own windows from the recording.
+- **macOS 15+ (done, `crates/core/src/record_mac.rs`):** ScreenCaptureKit through the `screencapturekit` crate, with Apple's `SCRecordingOutput` writing an H.264 MOV directly. Gives a proper permission prompt (the first `sources` or `record_start` asks), full-resolution capture, optional system audio, the mic, and leaves VidCrop's own windows and sounds out. Mic and system sound arrive as separate tracks; on stop they're mixed into one AAC track (the editor keeps only the first audio track) while the picture is copied as is. Frames only arrive when the screen changes, so the frame rate is variable.
+  - Building it needs the Swift toolchain (Xcode Command Line Tools are enough; `crates/core/build.rs` finds its libraries) and targets macOS 13+ (`.cargo/config.toml`).
+  - Ad-hoc signed builds get a new identity every build, so macOS asks for permission again after each rebuild. A Developer ID signature would fix that.
 - **Windows:** Windows.Graphics.Capture plus WASAPI loopback for system audio.
-- **Linux Wayland:** xdg-desktop-portal ScreenCast plus PipeWire.
+- **Linux Wayland:** xdg-desktop-portal ScreenCast plus PipeWire; system audio from the PulseAudio/PipeWire monitor source.
 
-Frames are piped to ffmpeg (raw frames on stdin) or encoded natively; decide when we get there.
+On Windows and Linux, frames are piped to ffmpeg (raw frames on stdin) or encoded natively; decide when we get there.
 
 ## Maybe later
 

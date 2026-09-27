@@ -8,4 +8,6 @@ pub mod export;
 pub mod ffmpeg;
 pub mod paths;
 pub mod record;
+#[cfg(target_os = "macos")]
+mod record_mac;
 pub mod session;

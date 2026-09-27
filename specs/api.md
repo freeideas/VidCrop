@@ -48,8 +48,8 @@ Times are in seconds. Crop rectangles are in source pixels of the picture as dis
 | `export`         | `output?`, `mode?`: `exact` or `fast`   | Starts saving; returns `{job, output}`              |
 | `wait`           | `job`, `timeout?`                       | Blocks until the job ends; returns the job          |
 | `cancel`         | `job`                                   | Stops a save and deletes the partial file           |
-| `sources`        |                                         | Screens and microphones that can be recorded        |
-| `record_start`   | `screen?`, `mic?`, `fps?`               | Starts recording (the window hides)                 |
+| `sources`        |                                         | Screens, mics, and `system_audio` (can it be recorded) |
+| `record_start`   | `screen?`, `mic?`, `system_audio?`, `fps?` | Starts recording (the window hides)                 |
 | `record_stop`    |                                         | Stops, and opens the recording in the editor        |
 | `play`, `pause`  |                                         | Player (window only)                                |
 | `seek`           | `time`                                  | Player (window only)                                |
