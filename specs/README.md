@@ -7,6 +7,7 @@ Technical plans for VidCrop. The user-facing pitch is in the [top-level README](
 - [export.md](export.md): how an edit becomes an ffmpeg command, encoder choices, progress, and the lossless "fast save".
 - [screen-recording.md](screen-recording.md): recording the screen and handing the result to the editor.
 - [api.md](api.md): driving everything without the window (HTTP API and command line), and how testing works.
+- [releases.md](releases.md): building for all three platforms, bundling ffmpeg, and publishing downloads.
 
 ## Guiding rules
 

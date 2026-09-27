@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VidCrop downloads</title>
+<style>
+  :root { --bg: #ffffff; --text: #1d2230; --muted: #5d6475; --line: #e3e6ee; --accent: #b86e00; --box: #f5f6f9; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #14171f; --text: #e6e9f0; --muted: #98a0b3; --line: #343b50; --accent: #ffb020; --box: #1d2230; }
+  }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 40px 16px 64px; }
+  h1 { font-size: 34px; margin: 0 0 4px; }
+  h2 { font-size: 19px; margin: 36px 0 8px; }
+  .tag { color: var(--muted); margin: 0 0 28px; }
+  ul { list-style: none; padding: 0; margin: 0; border: 1px solid var(--line); border-radius: 10px; }
+  li { display: flex; justify-content: space-between; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
+  li:first-child { border-top: 0; }
+  li span { color: var(--muted); white-space: nowrap; }
+  a { color: var(--accent); }
+  .box { background: var(--box); border-radius: 10px; padding: 4px 16px; }
+  code { font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>VidCrop {{VERSION}}</h1>
+  <p class="tag">Crop your video. That's it. That's the app.</p>
+
+  <ul>
+{{FILES}}
+  </ul>
+  <p><a href="files/{{VERSION}}/SHA256SUMS.txt">Checksums</a> · <a href="files/">All versions</a></p>
+
+  <h2>Which file?</h2>
+  <p><b>Mac</b> (Apple Silicon): the <code>.dmg</code>. <b>Windows</b>: the <code>setup.exe</code>. <b>Linux</b>: the <code>.AppImage</code> runs anywhere; the <code>.deb</code> is for Debian and Ubuntu.</p>
+
+  <h2>"Unidentified developer" warnings</h2>
+  <div class="box">
+    <p>VidCrop isn't paying Apple or Microsoft for a signing certificate yet, so your computer will be suspicious of it. It's fine. Here's how to get past it:</p>
+    <p><b>Mac:</b> open the <code>.dmg</code> and drag VidCrop to Applications. The first time you open it, macOS refuses. Go to System Settings, then Privacy &amp; Security, scroll down, and click <b>Open Anyway</b>.</p>
+    <p><b>Windows:</b> if you see "Windows protected your PC", click <b>More info</b>, then <b>Run anyway</b>.</p>
+    <p><b>Linux:</b> make the AppImage runnable first: <code>chmod +x VidCrop-*.AppImage</code>.</p>
+  </div>
+
+  <h2>Screen recording</h2>
+  <p>The first time you press Record, your computer asks for permission to record the screen. On a Mac, allow VidCrop in System Settings, Privacy &amp; Security, Screen Recording, then restart VidCrop.</p>
+
+  <p class="tag" style="margin-top:36px">Includes FFmpeg (GPL). Source links are in the app's <code>notices</code> folder.</p>
+</main>
+</body>
+</html>
