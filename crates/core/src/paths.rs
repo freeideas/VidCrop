@@ -34,17 +34,11 @@ pub fn cache_dir() -> PathBuf {
     }
 }
 
-/// Where saved screen recordings go: the Desktop, or the home folder if there isn't one.
+/// Where finished screen recordings go: the Desktop, or the home folder if there isn't one.
 pub fn desktop_dir() -> PathBuf {
     if let Some(d) = std::env::var_os("VIDCROP_DESKTOP_DIR") {
         return PathBuf::from(d);
     }
     let d = home().join("Desktop");
     if d.is_dir() { d } else { home() }
-}
-
-/// Recordings are made in the cache; anything there is a recording not saved yet.
-pub fn is_recording(path: &str) -> bool {
-    let cache = std::fs::canonicalize(cache_dir()).unwrap_or_else(|_| cache_dir());
-    std::path::Path::new(path).starts_with(cache)
 }

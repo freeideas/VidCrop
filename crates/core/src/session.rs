@@ -372,6 +372,5 @@ fn snapshot(s: &Session) -> Value {
         "recording": s.recording.as_ref().map(|r| json!({ "seconds": r.started.elapsed().as_secs_f64() })),
         "ui": s.ui,
         "debug_log": s.debug_log,
-        "from_recording": s.edit.as_ref().is_some_and(|e| crate::paths::is_recording(&e.source)),
     })
 }

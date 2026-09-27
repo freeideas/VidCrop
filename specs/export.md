@@ -42,7 +42,7 @@ ffmpeg -hide_banner -y -i SRC -filter_complex_script graph.txt \
 | Any      | fallback `libx264`        | `-crf 18 -preset medium -pix_fmt yuv420p`           |
 
 - Output is H.264 MP4 by default: plays everywhere, including on phones and in every chat app.
-- Where: next to the original as `<name>-cropped.mp4` (`-2`, `-3`... if taken), except screen recordings, which go to the Desktop (see screen-recording.md). With no crop and no cuts, saving is a straight copy.
+- Where: next to the original as `<name>-cropped.mp4` (`-2`, `-3`... if taken). Screen recordings already live on the Desktop, so their edits land there too. With no crop and no cuts, saving is a straight copy.
 - "Advanced" offers: HEVC (smaller), quality slider, keep original frame rate (default) or cap it.
 - Pick the encoder by probing `ffmpeg -encoders` once at startup, then test-encode a few frames if hardware encoders are unreliable on the machine.
 - Frame rate: keep the source's, including variable frame rate (screen recordings and phones). Add `-fps_mode passthrough` so ffmpeg doesn't duplicate frames.

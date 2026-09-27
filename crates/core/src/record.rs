@@ -211,15 +211,20 @@ impl Recording {
                 mkv
             }
         };
-        finish(&raw)
+        finish(&raw, &crate::paths::desktop_dir())
     }
 }
 
 /// Rewraps the raw recording as an MP4 the web view can play (MKV isn't), without re-encoding
 /// the picture. Mic and computer sound arrive as separate tracks; they're mixed into one,
-/// since the editor only keeps the first audio track.
-fn finish(raw: &Path) -> Result<PathBuf, String> {
-    let mp4 = raw.with_extension("mp4");
+/// since the editor only keeps the first audio track. The result goes in `out_dir` (the Desktop),
+/// so recordings are never left in a hidden folder.
+fn finish(raw: &Path, out_dir: &Path) -> Result<PathBuf, String> {
+    let stem = raw.file_stem().and_then(|s| s.to_str()).unwrap_or("Screen recording");
+    let mp4 = (1..)
+        .map(|n| out_dir.join(if n == 1 { format!("{stem}.mp4") } else { format!("{stem} {n}.mp4") }))
+        .find(|p| !p.exists())
+        .unwrap();
     let audio_tracks = ffmpeg::command("ffprobe")
         .args(["-v", "error", "-select_streams", "a", "-show_entries", "stream=index", "-of", "csv=p=0"])
         .arg(raw)
@@ -275,7 +280,7 @@ mod tests {
             .unwrap()
             .success();
         assert!(ok, "couldn't make the test clip");
-        let mp4 = finish(&raw).unwrap();
+        let mp4 = finish(&raw, &dir).unwrap();
         let out = ffmpeg::command("ffprobe")
             .args(["-v", "error", "-show_entries", "stream=codec_type", "-of", "csv=p=0"])
             .arg(&mp4)
