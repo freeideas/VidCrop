@@ -22,6 +22,7 @@ type State = {
   can_redo: boolean;
   jobs: Job[];
   recording: { seconds: number } | null;
+  preview?: string | null;
 };
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -32,7 +33,8 @@ const track = $("track");
 const scroll = $("scroll");
 
 let S: State = { file: null, edit: null, kept: [], kept_duration: 0, output_size: null, can_undo: false, can_redo: false, jobs: [], recording: null };
-let loadedPath = "";
+let loadedPath = ""; // the video open in the editor
+let loadedSrc = ""; // the file the player is showing (maybe its preview copy)
 let draft: Rect | null = null; // crop being dragged, not yet sent
 let ratio: number | null = null; // locked crop shape, from the menu
 let selection: Range | null = null;
@@ -160,7 +162,8 @@ function render() {
   $("edit-tools").hidden = !has;
 
   if (S.file && S.file.path !== loadedPath) loadFile(S.file);
-  if (!S.file) loadedPath = "";
+  else if (S.file && playerSrc() !== loadedSrc) switchSource();
+  if (!S.file) loadedPath = loadedSrc = "";
 
   $<HTMLButtonElement>("undo").disabled = !S.can_undo;
   $<HTMLButtonElement>("redo").disabled = !S.can_redo;
@@ -178,12 +181,30 @@ function render() {
   renderJobs();
 }
 
+/** What the player shows: the smaller preview copy of a big video once it's ready, else the video itself. */
+function playerSrc(): string {
+  return S.preview ?? S.file?.path ?? "";
+}
+
+/** Swaps in the preview copy when it's ready, keeping the playhead and play/pause. */
+function switchSource() {
+  const [t, paused] = [video.currentTime, video.paused];
+  loadedSrc = playerSrc();
+  logEvent({ event: "switch_source", src: loadedSrc, time: t });
+  video.src = convertFileSrc(loadedSrc);
+  video.addEventListener("loadedmetadata", () => {
+    video.currentTime = t;
+    if (!paused) video.play().catch(() => {});
+  }, { once: true });
+}
+
 async function loadFile(f: FileInfo) {
   loadedPath = f.path;
   selection = null;
   zoom = 1;
   $("video-msg").hidden = true;
-  video.src = convertFileSrc(f.path);
+  loadedSrc = playerSrc();
+  video.src = convertFileSrc(loadedSrc);
   layout();
   $("thumbs").style.backgroundImage = "";
   try {
@@ -255,17 +276,27 @@ function renderSelection() {
 }
 
 function renderJobs() {
-  const running = S.jobs.find((j) => j.kind === "export" && j.status === "running");
+  // A save takes the progress bar over a preview copy being made.
+  const running =
+    S.jobs.find((j) => j.kind !== "preview" && j.status === "running") ??
+    S.jobs.find((j) => j.kind === "preview" && j.status === "running");
   $("progress").hidden = !running;
   if (running) {
-    $("progress-label").textContent = `Saving ${running.output.split(/[\\/]/).pop()}… ${Math.round(running.progress * 100)}%`;
+    const what =
+      running.kind === "preview" ? "Preparing a smooth preview"
+      : running.kind === "copy" ? "Preparing to copy"
+      : `Saving ${running.output.split(/[\\/]/).pop()}`;
+    $("progress-label").textContent = `${what}… ${Math.round(running.progress * 100)}%`;
     $("progress-fill").style.width = `${running.progress * 100}%`;
     $("cancel").onclick = () => run({ cmd: "cancel", job: running.id });
   }
   for (const j of S.jobs) {
-    if (j.status === "running" || seenJobs.has(j.id)) continue;
+    if (j.kind === "preview" || j.status === "running" || seenJobs.has(j.id)) continue;
     seenJobs.add(j.id);
-    if (j.status === "done") {
+    if (j.kind === "copy") {
+      if (j.status === "done") toast(copiedMsg);
+      else if (j.status === "failed") toast(`Couldn't copy: ${j.error}`, true);
+    } else if (j.status === "done") {
       toast(`Saved ${j.output.split(/[\\/]/).pop()}`, false, { label: "Show in folder", fn: () => revealItemInDir(j.output) });
     } else if (j.status === "failed") {
       const pre = Object.assign(document.createElement("pre"), { textContent: j.error ?? "" });
@@ -529,6 +560,16 @@ async function openFile() {
   if (typeof path === "string") run({ cmd: "open", path });
 }
 
+const copiedMsg = "Copied. Paste it into a chat or email (Cmd/Ctrl+V).";
+
+/** Puts the result on the clipboard; an edited video is saved to a scratch file first. */
+async function copyVideo() {
+  if (!S.edit) return;
+  video.pause();
+  const r = await run({ cmd: "copy" });
+  if (r.copied) toast(copiedMsg);
+}
+
 async function save(mode: "exact" | "fast" = "exact", ask = false) {
   if (!S.edit) return;
   if (mode === "exact" && !S.edit.crop && !S.edit.deleted.length) {
@@ -611,6 +652,7 @@ $("reset-crop").onclick = () => {
 };
 $("undo").onclick = () => run({ cmd: "undo" });
 $("redo").onclick = () => run({ cmd: "redo" });
+$("copy").onclick = () => copyVideo();
 $("save").onclick = () => save();
 $("save-more").onclick = (e) => {
   e.stopPropagation();
@@ -640,6 +682,7 @@ document.addEventListener("keydown", (e) => {
   if (mod && k === "z") return e.preventDefault(), run({ cmd: e.shiftKey ? "redo" : "undo" });
   if (mod && k === "y") return e.preventDefault(), run({ cmd: "redo" });
   if (mod && k === "s") return e.preventDefault(), save();
+  if (mod && k === "c" && !window.getSelection()?.toString()) return e.preventDefault(), copyVideo();
   if (mod) return;
   switch (e.key) {
     case " ": e.preventDefault(); togglePlay(); break;

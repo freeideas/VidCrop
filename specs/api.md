@@ -46,6 +46,7 @@ Times are in seconds. Crop rectangles are in source pixels of the picture as dis
 | `undo`, `redo`   |                                         | Edit history                                        |
 | `thumbnails`     | `count?`, `height?`                     | `{image}`: a JPEG strip as a data URL               |
 | `export`         | `output?`, `mode?`: `exact` or `fast`   | Starts saving; returns `{job, output}`              |
+| `copy`           | `mode?`                                 | Result to the clipboard: `{job}`, or `{copied}`     |
 | `wait`           | `job`, `timeout?`                       | Blocks until the job ends; returns the job          |
 | `cancel`         | `job`                                   | Stops a save and deletes the partial file           |
 | `sources`        |                                         | Screens, mics, and `system_audio` (can it be recorded) |
@@ -71,6 +72,7 @@ Every edit command is one undo step, the same as the matching mouse action.
   "can_undo": true, "can_redo": false,
   "jobs": [{ "id", "kind", "status": "running|done|failed|cancelled", "progress", "output", "error" }],
   "recording": { "seconds" } | null,
+  "preview": "/.../previews/<hash>.mp4" | null,  // smaller copy the player shows for big videos
   "ui": { "playhead", "playing", "selection", "preview_crop", "zoom", "crop_shape" }  // from the window
   "debug_log": "/tmp/.../vidcrop-debug-20260927-110627-40290" | null
 }

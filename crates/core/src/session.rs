@@ -2,9 +2,11 @@
 //! `Command`s to `Core::exec`, and both see the same `state()`.
 
 use crate::edit::{Edit, Range, Rect};
+use crate::clipboard;
 use crate::debuglog::{self, DebugLog};
 use crate::export::{self, Mode};
 use crate::ffmpeg::{self, MediaInfo};
+use crate::preview;
 use crate::record::{self, RecordOptions, Recording};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -33,6 +35,9 @@ pub enum Command {
     Thumbnails { count: Option<u32>, height: Option<u32> },
     /// Starts a save job; returns `{ "job": id, "output": path }`.
     Export { output: Option<String>, mode: Option<Mode> },
+    /// Like export, but puts the result on the clipboard to paste into a chat. Returns `{job}`, or
+    /// `{copied}` right away when there's nothing to change and the original is copied as is.
+    Copy { mode: Option<Mode> },
     Cancel { job: u64 },
     /// Blocks until the job finishes (or `timeout` seconds pass); returns the job.
     Wait { job: u64, timeout: Option<f64> },
@@ -84,6 +89,8 @@ struct Session {
     ui: Value,
     /// The debug log folder, while there is one.
     debug_log: Option<String>,
+    /// The smaller copy the player shows instead of a big video, once it's ready (see `preview`).
+    preview: Option<String>,
 }
 
 /// How the core talks back to whoever hosts it (the Tauri app, or nothing when headless).
@@ -110,6 +117,8 @@ impl Core {
     pub fn new(host: Box<dyn Host>) -> Arc<Core> {
         let work_dir = crate::paths::cache_dir();
         let _ = std::fs::create_dir_all(&work_dir);
+        preview::clean_old(&work_dir);
+        clipboard::clean_old(&work_dir);
         Arc::new(Core { s: Mutex::new(Session { ui: json!({}), ..Default::default() }), host, work_dir, log: Mutex::new(None) })
     }
 
@@ -182,6 +191,7 @@ impl Core {
             Command::Close => {
                 let mut s = self.s.lock().unwrap();
                 (s.info, s.edit) = (None, None);
+                s.preview = None;
                 s.undo.clear();
                 s.redo.clear();
                 Ok(json!({ "ok": true }))
@@ -200,7 +210,8 @@ impl Core {
                 let image = ffmpeg::thumbnail_strip(&info, count.unwrap_or(40), height.unwrap_or(90))?;
                 return Ok(json!({ "image": image }));
             }
-            Command::Export { output, mode } => self.export(output, mode.unwrap_or_default()),
+            Command::Export { output, mode } => self.export(output, mode.unwrap_or_default(), false),
+            Command::Copy { mode } => self.export(None, mode.unwrap_or_default(), true),
             Command::Cancel { job } => {
                 let s = self.s.lock().unwrap();
                 let j = s.jobs.get(&job).ok_or("no such job")?;
@@ -239,7 +250,7 @@ impl Core {
         result
     }
 
-    fn open(&self, path: &str) -> Result<Value, String> {
+    fn open(self: &Arc<Self>, path: &str) -> Result<Value, String> {
         let abs = std::fs::canonicalize(path).map_err(|e| format!("can't open {path}: {e}"))?;
         let path = &*abs.to_string_lossy();
         let info = ffmpeg::probe(path)?;
@@ -248,6 +259,9 @@ impl Core {
         s.info = Some(info.clone());
         s.undo.clear();
         s.redo.clear();
+        s.preview = None;
+        drop(s);
+        self.start_preview(&info);
         Ok(json!({ "file": info }))
     }
 
@@ -275,25 +289,57 @@ impl Core {
         Ok(json!({ "edit": prev }))
     }
 
-    fn export(self: &Arc<Self>, output: Option<String>, mode: Mode) -> Result<Value, String> {
+    /// Saves the edit to `output` (or next to the original). With `copy`, saves it to a scratch
+    /// file instead and puts that on the clipboard when done (job kind "copy").
+    fn export(self: &Arc<Self>, output: Option<String>, mode: Mode, copy: bool) -> Result<Value, String> {
         let (edit, info, id) = {
             let mut s = self.s.lock().unwrap();
             s.next_job += 1;
             (s.edit.clone().ok_or("no video is open")?, s.info.clone().unwrap(), s.next_job)
         };
+        let unedited = edit.crop.is_none() && edit.deleted.is_empty();
+        if copy && unedited {
+            // Nothing to change: the original itself goes on the clipboard.
+            clipboard::copy_file(Path::new(&edit.source))?;
+            return Ok(json!({ "copied": edit.source }));
+        }
         // Nothing to crop or cut (keeping a recording as is): a straight copy, no re-encoding.
-        let mode = if edit.crop.is_none() && edit.deleted.is_empty() { Mode::Fast } else { mode };
-        let out = output.map(PathBuf::from).unwrap_or_else(|| export::default_output(&edit.source, mode));
+        let mode = if unedited { Mode::Fast } else { mode };
+        let out = match (copy, output) {
+            (true, _) => clipboard::output_for(&edit.source, &self.work_dir),
+            (false, Some(o)) => PathBuf::from(o),
+            (false, None) => export::default_output(&edit.source, mode),
+        };
         if Path::new(&edit.source) == out {
             return Err("won't overwrite the original video".into());
+        }
+        if let Some(d) = out.parent() {
+            let _ = std::fs::create_dir_all(d);
         }
         let job_dir = self.work_dir.join(format!("job-{}-{id}", std::process::id()));
         std::fs::create_dir_all(&job_dir).map_err(|e| e.to_string())?;
         let plan = export::plan(&edit, &info, &out, mode, &job_dir)?;
+        let (core, done) = (self.clone(), out.clone());
+        self.start_job(id, if copy { "copy" } else { "export" }, plan, out, move |ok| {
+            let _ = std::fs::remove_dir_all(&job_dir);
+            if copy && ok {
+                if let Err(e) = clipboard::copy_file(&done) {
+                    if let Some(j) = core.s.lock().unwrap().jobs.get_mut(&id) {
+                        (j.status, j.error) = ("failed".into(), Some(e));
+                    }
+                }
+            }
+        });
+        Ok(json!({ "job": id, "output": self.s.lock().unwrap().jobs[&id].output }))
+    }
+
+    /// Runs an ffmpeg plan in the background as job `id`, keeping its progress in the state.
+    /// `after` runs when it ends, with whether it succeeded.
+    fn start_job(self: &Arc<Self>, id: u64, kind: &str, plan: export::Plan, out: PathBuf, after: impl FnOnce(bool) + Send + 'static) {
         let cancel = Arc::new(AtomicBool::new(false));
         let job = Job {
             id,
-            kind: "export".into(),
+            kind: kind.into(),
             status: "running".into(),
             progress: 0.0,
             output: out.to_string_lossy().into_owned(),
@@ -301,6 +347,7 @@ impl Core {
             cancel: cancel.clone(),
         };
         self.s.lock().unwrap().jobs.insert(id, job);
+        self.notify();
 
         let core = self.clone();
         std::thread::spawn(move || {
@@ -315,7 +362,7 @@ impl Core {
                     c2.notify();
                 }
             });
-            let _ = std::fs::remove_dir_all(&job_dir);
+            let ok = result.is_ok();
             if let Some(j) = core.s.lock().unwrap().jobs.get_mut(&id) {
                 match result {
                     Ok(_) => (j.status, j.progress) = ("done".into(), 1.0),
@@ -323,9 +370,37 @@ impl Core {
                     Err(e) => (j.status, j.error) = ("failed".into(), Some(e)),
                 }
             }
+            after(ok);
             core.notify();
         });
-        Ok(json!({ "job": id, "output": self.s.lock().unwrap().jobs[&id].output }))
+    }
+
+    /// Big videos play from a smaller copy (see `preview`). Uses one already made, or starts making it.
+    fn start_preview(self: &Arc<Self>, info: &MediaInfo) {
+        if !preview::needed(info) {
+            return;
+        }
+        let out = preview::path_for(info, &self.work_dir);
+        if out.is_file() {
+            self.s.lock().unwrap().preview = Some(out.to_string_lossy().into_owned());
+            return;
+        }
+        if let Some(d) = out.parent() {
+            let _ = std::fs::create_dir_all(d);
+        }
+        let id = {
+            let mut s = self.s.lock().unwrap();
+            s.next_job += 1;
+            s.next_job
+        };
+        let (core, source, done) = (self.clone(), info.path.clone(), out.to_string_lossy().into_owned());
+        self.start_job(id, "preview", preview::plan(info, &out), out, move |ok| {
+            let mut s = core.s.lock().unwrap();
+            // Only if that video is still the one open.
+            if ok && s.info.as_ref().is_some_and(|i| i.path == source) {
+                s.preview = Some(done);
+            }
+        });
     }
 
     fn wait(&self, id: u64, timeout: f64) -> Result<Value, String> {
@@ -372,5 +447,6 @@ fn snapshot(s: &Session) -> Value {
         "recording": s.recording.as_ref().map(|r| json!({ "seconds": r.started.elapsed().as_secs_f64() })),
         "ui": s.ui,
         "debug_log": s.debug_log,
+        "preview": s.preview,
     })
 }

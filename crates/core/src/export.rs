@@ -47,7 +47,7 @@ pub fn default_output(source: &str, mode: Mode) -> PathBuf {
         .unwrap()
 }
 
-fn partial_path(out: &Path) -> PathBuf {
+pub(crate) fn partial_path(out: &Path) -> PathBuf {
     let ext = out.extension().and_then(|s| s.to_str()).unwrap_or("mp4");
     out.with_extension(format!("part.{ext}"))
 }

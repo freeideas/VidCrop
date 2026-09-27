@@ -60,7 +60,7 @@ Development uses the Homebrew copy. Release builds bundle it.
 - **Windows (WebView2, i.e. Edge):** H.264 fine, HEVC only with the system extension, no MOV/ProRes.
 - **Linux (WebKitGTK):** depends on installed GStreamer plugins; often poor.
 
-When the `<video>` element fires `error` or can't decode, generate a **preview proxy**: a low-resolution H.264 MP4 in the cache folder, used only for display. Crop coordinates are always stored in source pixels, so the proxy's lower resolution doesn't matter for export.
+**Preview copy** (`crates/core/src/preview.rs`): for a video over 1920x1088, or not H.264/HEVC, opening it starts a background job (kind `preview`) that makes a smaller H.264 copy in the cache (at most 1920x1080, a keyframe every half second, no B-frames). Full-resolution screen recordings need this: the web view's decoder showed green blotches or froze after seeking in them. The player switches to the copy when it's ready (`state.preview`), keeping its place. Crop and cuts are stored in the original's pixels and seconds, and saving always reads the original, so the copy only affects the screen. Copies unused for a week are removed.
 
 ## Files and folders
 

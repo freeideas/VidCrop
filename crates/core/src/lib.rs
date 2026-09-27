@@ -3,11 +3,13 @@
 //! tested without a window.
 
 pub mod api;
+pub mod clipboard;
 pub mod debuglog;
 pub mod edit;
 pub mod export;
 pub mod ffmpeg;
 pub mod paths;
+pub mod preview;
 pub mod record;
 #[cfg(target_os = "macos")]
 mod record_mac;

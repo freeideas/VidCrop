@@ -73,4 +73,5 @@ type Edit = {
 | Cmd/Ctrl+Z, Shift+Z   | Undo / redo                              |
 | C                     | Toggle crop preview                      |
 | Cmd/Ctrl+S            | Save                                     |
+| Cmd/Ctrl+C            | Copy the result, to paste into a chat    |
 | Esc                   | Clear selection                          |

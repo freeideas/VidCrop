@@ -21,6 +21,9 @@ impl Host for TauriHost {
             // Let the <video> element load this one file through the asset protocol.
             let _ = self.app.asset_protocol_scope().allow_file(path);
         }
+        if let Some(path) = state["preview"].as_str() {
+            let _ = self.app.asset_protocol_scope().allow_file(path);
+        }
         let recording = !state["recording"].is_null();
         if recording != self.recording.swap(recording, Ordering::SeqCst) {
             recording_changed(&self.app, recording);
