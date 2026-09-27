@@ -5,7 +5,7 @@ Downloads live at https://62-84-178-253.sslip.io/VidCrop/, not on GitHub: the re
 ## One command
 
 ```sh
-uv run tools/release.py                  # build Mac, Linux, Windows, then publish
+uv run tools/release.py                  # build Mac, Linux, Windows (at the same time), then publish
 uv run tools/release.py --only windows   # rebuild one platform (repeatable), then publish
 uv run tools/release.py --publish-only
 ```
@@ -21,8 +21,8 @@ It builds the committed HEAD, so commit first. Bump `version` in `src-tauri/taur
 | Windows  | `ssh emeraldslate-windows` (Windows 11 guest) | NSIS `setup.exe`           |
 
 - The source is sent with `git archive HEAD` over SSH; no GitHub login is needed on the build machines.
-- The Windows guest runs in emeraldslate's `omarchy-windows` Docker container. Windows builds run as a scheduled task (`tools/build-windows.cmd`), because programs started from an SSH session die when it closes. The guest has Rust (via winget's rustup), Node, uv and the Visual Studio build tools.
-- Linux builds run in Docker from `tools/linux-build/Dockerfile` (Ubuntu 22.04), because an AppImage only runs on systems at least as old as the one it was built on. emeraldslate is short on memory while the Windows guest runs, so builds use 3 parallel jobs. Docker there is not started at boot; the script uses `sudo docker` when needed.
+- The Windows guest runs in emeraldslate's `omarchy-windows` Docker container (5 cores, 4 GB; set in `~/.config/windows/docker-compose.yml` there). Windows builds run as a scheduled task (`tools/build-windows.cmd`), because programs started from an SSH session die when it closes. The guest has Rust (via winget's rustup), Node, uv and the Visual Studio build tools.
+- Linux builds run in Docker from `tools/linux-build/Dockerfile` (Ubuntu 22.04), because an AppImage only runs on systems at least as old as the one it was built on. emeraldslate is short on memory while the Windows guest runs, so Linux builds use 3 parallel jobs. Docker there is not started at boot; the script uses `sudo docker` when needed.
 - DesktopIA can reach emeraldslate's screen (`vnc://EmeraldSlate`) if a build machine ever waits on a dialog.
 
 ## Bundled ffmpeg

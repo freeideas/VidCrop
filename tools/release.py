@@ -107,11 +107,9 @@ def _start_linux():
                f'vidcrop-linux-build bash -c "{inner}"')
 
 
-def build_linux(out, start=True):
+def fetch_linux(out):
     # Built in an Ubuntu 22.04 container (tools/linux-build/Dockerfile): an AppImage only runs
     # on systems at least as old as where it was built, and Arch is too new.
-    if start:
-        _start_linux()
     wait_for_log(LINUX, "tail -c 4000 ~/build/VidCrop/build.log", "linux")
     v = version()
     bundle = "~/build/VidCrop/target/release/bundle"
@@ -120,12 +118,14 @@ def build_linux(out, start=True):
     run(["scp", "-o", "BatchMode=yes", f"{LINUX}:{bundle}/deb/VidCrop_{v}_amd64.deb", str(out / f"vidcrop_{v}_amd64.deb")])
 
 
-def build_windows(out, start=True):
-    if start:
-        ssh(WINDOWS, f"(if exist {WIN_DIR} rmdir /s /q {WIN_DIR}) & mkdir {WIN_DIR}")
-        send_source(WINDOWS, f"tar -x -C {WIN_DIR}")
-        ssh(WINDOWS, f'schtasks /create /tn VidCropBuild /sc once /st 00:00 /f /tr "{WIN_DIR}\\tools\\build-windows.cmd"'
-                     " && schtasks /run /tn VidCropBuild")
+def _start_windows():
+    ssh(WINDOWS, f"(if exist {WIN_DIR} rmdir /s /q {WIN_DIR}) & mkdir {WIN_DIR}")
+    send_source(WINDOWS, f"tar -x -C {WIN_DIR}")
+    ssh(WINDOWS, f'schtasks /create /tn VidCropBuild /sc once /st 00:00 /f /tr "{WIN_DIR}\\tools\\build-windows.cmd"'
+                 " && schtasks /run /tn VidCropBuild")
+
+
+def fetch_windows(out):
     wait_for_log(WINDOWS, f'powershell -NoProfile -Command "Get-Content {WIN_DIR}\\build.log -Tail 40"', "windows")
     v = version()
     src = f"{WINDOWS}:{WIN_DIR.replace(chr(92), '/')}/target/release/bundle/nsis/VidCrop_{v}_x64-setup.exe"
@@ -169,11 +169,18 @@ def main():
     out = ROOT / "released" / version()
     out.mkdir(parents=True, exist_ok=True)
     if not a.publish_only:
-        for name in a.only or ["mac", "linux", "windows"]:
-            if name == "mac":
-                build_mac(out)
-            else:
-                {"linux": build_linux, "windows": build_windows}[name](out, start=not a.collect)
+        names = a.only or ["mac", "linux", "windows"]
+        remote = [n for n in ("linux", "windows") if n in names]
+        # Linux and Windows build on their own machines, so start both, build the Mac one
+        # here meanwhile, then collect. A failed build stops the script; the other keeps
+        # running remotely and can be fetched with --collect.
+        if not a.collect:
+            for name in remote:
+                {"linux": _start_linux, "windows": _start_windows}[name]()
+        if "mac" in names:
+            build_mac(out)
+        for name in remote:
+            {"linux": fetch_linux, "windows": fetch_windows}[name](out)
     if not a.no_publish:
         publish(out)
 
