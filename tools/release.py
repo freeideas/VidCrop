@@ -12,6 +12,7 @@ released/<version>/, then published to https://62-84-178-253.sslip.io/VidCrop/.
   uv run tools/release.py                    # build all three and publish
   uv run tools/release.py --only linux       # just one build (repeatable)
   uv run tools/release.py --publish-only     # publish what's already in released/<version>/
+  uv run tools/release.py --only windows --collect   # wait for a build already running, fetch it
 
 Machines (override with env vars): VIDCROP_LINUX_HOST=ace@emeraldslate,
 VIDCROP_WINDOWS_HOST=emeraldslate-windows, VIDCROP_WEB_HOST=ace@62.84.178.253.
@@ -64,7 +65,7 @@ def wait_for_log(host, read_log, label, timeout_min=120):
     t0, last = time.time(), ""
     while time.time() - t0 < timeout_min * 60:
         time.sleep(30)
-        out = subprocess.run(SSH + [host, read_log], capture_output=True, text=True).stdout.replace("\r", "")
+        out = subprocess.run(SSH + [host, read_log], capture_output=True, text=True, errors="replace").stdout.replace("\r", "")
         lines = [l for l in out.splitlines() if l.strip()]
         tail = lines[-1] if lines else ""
         if tail != last:
@@ -88,9 +89,7 @@ def build_mac(out):
     shutil.copy2(dmg, out / f"VidCrop-{version()}-macos-arm64.dmg")
 
 
-def build_linux(out):
-    # Built in an Ubuntu 22.04 container (tools/linux-build/Dockerfile): an AppImage only runs
-    # on systems at least as old as where it was built, and Arch is too new.
+def _start_linux():
     send_source(LINUX, "rm -rf ~/build/VidCrop && mkdir -p ~/build/VidCrop && tar -x -C ~/build/VidCrop")
     docker = "$(docker info >/dev/null 2>&1 && echo docker || echo 'sudo -n docker')"
     ssh(LINUX, f"D={docker}; cd ~/build/VidCrop && $D build -q -t vidcrop-linux-build tools/linux-build")
@@ -102,6 +101,13 @@ def build_linux(out):
     ssh(LINUX, f"D={docker}; $D run --rm -d --name vidcrop-build -v ~/build/VidCrop:/src "
                "-v vidcrop-cargo:/root/.cargo/registry -e APPIMAGE_EXTRACT_AND_RUN=1 -e CARGO_BUILD_JOBS=3 "
                f'vidcrop-linux-build bash -c "{inner}"')
+
+
+def build_linux(out, start=True):
+    # Built in an Ubuntu 22.04 container (tools/linux-build/Dockerfile): an AppImage only runs
+    # on systems at least as old as where it was built, and Arch is too new.
+    if start:
+        _start_linux()
     wait_for_log(LINUX, "tail -c 4000 ~/build/VidCrop/build.log", "linux")
     v = version()
     bundle = "~/build/VidCrop/target/release/bundle"
@@ -110,11 +116,12 @@ def build_linux(out):
     run(["scp", "-o", "BatchMode=yes", f"{LINUX}:{bundle}/deb/VidCrop_{v}_amd64.deb", str(out / f"vidcrop_{v}_amd64.deb")])
 
 
-def build_windows(out):
-    ssh(WINDOWS, f"(if exist {WIN_DIR} rmdir /s /q {WIN_DIR}) & mkdir {WIN_DIR}")
-    send_source(WINDOWS, f"tar -x -C {WIN_DIR}")
-    ssh(WINDOWS, f'schtasks /create /tn VidCropBuild /sc once /st 00:00 /f /tr "{WIN_DIR}\\tools\\build-windows.cmd"'
-                 " && schtasks /run /tn VidCropBuild")
+def build_windows(out, start=True):
+    if start:
+        ssh(WINDOWS, f"(if exist {WIN_DIR} rmdir /s /q {WIN_DIR}) & mkdir {WIN_DIR}")
+        send_source(WINDOWS, f"tar -x -C {WIN_DIR}")
+        ssh(WINDOWS, f'schtasks /create /tn VidCropBuild /sc once /st 00:00 /f /tr "{WIN_DIR}\\tools\\build-windows.cmd"'
+                     " && schtasks /run /tn VidCropBuild")
     wait_for_log(WINDOWS, f'powershell -NoProfile -Command "Get-Content {WIN_DIR}\\build.log -Tail 40"', "windows")
     v = version()
     src = f"{WINDOWS}:{WIN_DIR.replace(chr(92), '/')}/target/release/bundle/nsis/VidCrop_{v}_x64-setup.exe"
@@ -153,12 +160,16 @@ def main():
     ap.add_argument("--only", action="append", choices=["mac", "linux", "windows"])
     ap.add_argument("--publish-only", action="store_true")
     ap.add_argument("--no-publish", action="store_true")
+    ap.add_argument("--collect", action="store_true", help="don't start builds; wait for ones already running and fetch the results")
     a = ap.parse_args()
     out = ROOT / "released" / version()
     out.mkdir(parents=True, exist_ok=True)
     if not a.publish_only:
         for name in a.only or ["mac", "linux", "windows"]:
-            {"mac": build_mac, "linux": build_linux, "windows": build_windows}[name](out)
+            if name == "mac":
+                build_mac(out)
+            else:
+                {"linux": build_linux, "windows": build_windows}[name](out, start=not a.collect)
     if not a.no_publish:
         publish(out)
 
