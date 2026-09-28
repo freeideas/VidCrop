@@ -495,10 +495,12 @@ track.addEventListener("pointerdown", (e) => {
   const move = (ev: PointerEvent) => {
     if (scrub) return seek(timeAt(ev.clientX));
     if (!dragging && Math.abs(ev.clientX - x0) < 4) return;
+    if (!dragging) video.pause();
     dragging = true;
     const t = snap(timeAt(ev.clientX));
     selection = { start: Math.min(t0, t), end: Math.max(t0, t) };
     renderSelection();
+    seek(t); // show the frame under the moving end, to find where the range should stop
   };
   const up = () => {
     track.removeEventListener("pointermove", move);

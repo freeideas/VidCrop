@@ -51,7 +51,7 @@ type Edit = {
 ## Timeline
 
 - Thumbnail strip generated once per file (see [architecture.md](architecture.md)).
-- Click to move the playhead. Drag across to select a range. The selection shows its start, end and length.
+- Click to move the playhead. Drag across to select a range; while dragging, the picture shows the frame under the moving end (playback pauses), so you can watch for where the range should stop. The selection shows its start, end and length.
 - Delete or Backspace removes the selection. Deleted ranges show hatched and dimmed, and stay visible so they can be clicked and restored ("Restore this part").
 - Zoom with pinch or Ctrl/Cmd + scroll for long videos.
 - Snapping: range edges snap to the playhead and to other range edges within a few pixels.
