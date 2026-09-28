@@ -4281,7 +4281,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "vidcrop-app"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde_json",
  "tauri",
@@ -4293,7 +4293,7 @@ dependencies = [
 
 [[package]]
 name = "vidcrop-cli"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde_json",
  "vidcrop-core",
@@ -4301,7 +4301,7 @@ dependencies = [
 
 [[package]]
 name = "vidcrop-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "base64 0.22.1",
  "chrono",
