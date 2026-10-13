@@ -17,6 +17,14 @@ Technical plans for VidCrop. The user-facing pitch is in the [top-level README](
 4. Everything runs locally. No network calls (the API listens only on this computer).
 5. Everything is operable through the API. Tests drive the API; screenshots are only for checking looks.
 
+## Working on VidCrop
+
+- **Every feature must be reachable through the core's JSON commands** (`crates/core/src/session.rs`), not only through the page. The page and the HTTP API are both thin front ends to it.
+- **Test by driving the API** (`cargo test`, `vidcrop serve`, `vidcrop api '{...}'`); [api.md](api.md) explains how. Use DesktopIA or screenshots only to check looks and mouse gestures.
+- **Run the app with `npx tauri dev`.** The running app writes its API address and token to `~/Library/Application Support/VidCrop/api.json` (macOS).
+- **Only the first video and first audio stream are saved.** Saving always writes a new file and never touches the original.
+- **There is deliberately no `AGENTS.md` or `CLAUDE.md`.** An agent reads the [README](../README.md), then this page and the spec its task needs.
+
 ## Milestones
 
 Done on macOS (September 2026): milestones 1 to 5, a basic fast save, the API, and an unsigned release build. Not yet: autosaving the edit, the preview copy for videos the window can't play, the keyframe warning for fast save, Windows and Linux builds, bundling ffmpeg.
