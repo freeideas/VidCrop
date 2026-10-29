@@ -17,13 +17,11 @@ It builds the committed HEAD, so commit first. Bump `version` in `src-tauri/taur
 | Platform | Machine                                 | Output                           |
 |----------|-----------------------------------------|----------------------------------|
 | macOS    | this Mac (Apple Silicon)                | `.dmg`                           |
-| Linux    | `ssh ace@emeraldslate`, in an Ubuntu 22.04 container | `.AppImage` and `.deb`    |
-| Windows  | `ssh emeraldslate-windows` (Windows 11 guest) | NSIS `setup.exe`           |
+| Linux    | none yet (emeraldslate is gone) | `.AppImage` and `.deb`    |
+| Windows  | none yet (see below)            | NSIS `setup.exe`           |
 
 - The source is sent with `git archive HEAD` over SSH; no GitHub login is needed on the build machines.
-- The Windows guest runs in emeraldslate's `omarchy-windows` Docker container (5 cores, 4 GB; set in `~/.config/windows/docker-compose.yml` there). Windows builds run as a scheduled task (`tools/build-windows.cmd`), because programs started from an SSH session die when it closes. The guest has Rust (via winget's rustup), Node, uv and the Visual Studio build tools.
-- Linux builds run in Docker from `tools/linux-build/Dockerfile` (Ubuntu 22.04), because an AppImage only runs on systems at least as old as the one it was built on. emeraldslate is short on memory while the Windows guest runs, so Linux builds use 3 parallel jobs. Docker there is not started at boot; the script uses `sudo docker` when needed.
-- DesktopIA can reach emeraldslate's screen (`vnc://EmeraldSlate`) if a build machine ever waits on a dialog.
+- Out of date since 2026-10-26: the Linux and Windows build machines were on emeraldslate (Linux builds via `ssh ace@emeraldslate` in Docker, Windows builds in the `omarchy-windows` guest as `ssh emeraldslate-windows`). Its disk was wiped; it now runs Windows 11 Pro with no Linux, Docker or VMs, and that ssh alias is removed. A new Linux build machine is not set up yet. EmeraldSlate (`ssh human@emeraldslate`, `vnc://EmeraldSlate`) could serve for Windows builds once Rust, Node, uv and the Visual Studio build tools are installed there. The scripts `tools/build-windows.cmd` and `tools/linux-build/Dockerfile` remain as the recipe: Windows builds ran as a scheduled task because programs started from an SSH session die when it closes, and Linux builds used Ubuntu 22.04 because an AppImage only runs on systems at least as old as the one it was built on.
 
 ## Bundled ffmpeg
 
