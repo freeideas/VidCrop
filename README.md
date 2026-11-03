@@ -4,6 +4,14 @@
 
 Drag the edges to make the picture smaller. Select the boring parts of the timeline and hit Delete. Press Space to watch it. Press Save. Go outside. Touch grass.
 
+## Project status
+
+Keep this section current: at the end of each work session, replace these three lines (don't append). If there is nothing left to do, say so and why, e.g. `none (finished)` or `none (parked: reason)`. `../misc/scripts/rundown.py` collects this section from every project.
+
+- Next step: Build the Windows and Linux versions (plan in specs/README.md)
+- Waiting on: nothing
+- Last action: 2026-10-29, corrected build-machine instructions; version 0.1.1 released 09-28
+
 ## Why this exists
 
 I wanted to cut the edges off a video and chop out the part where I fumbled with the mouse. A thing a toaster should be able to do. Here is how that went:
