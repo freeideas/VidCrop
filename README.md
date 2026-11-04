@@ -6,7 +6,7 @@ Drag the edges to make the picture smaller. Select the boring parts of the timel
 
 ## Project status
 
-Keep this section current: at the end of each work session, replace these three lines (don't append). If there is nothing left to do, say so and why, e.g. `none (finished)` or `none (parked: reason)`. `../misc/scripts/rundown.py` collects this section from every project.
+Keep this section current: at the end of each work session, replace these three lines (don't append). If there is nothing left to do, say so and why, e.g. `none (finished)` or `none (parked: reason)`. `../LifeStaff/scripts/rundown.py` collects this section from every project.
 
 - Next step: Build the Windows and Linux versions (plan in specs/README.md)
 - Waiting on: nothing
